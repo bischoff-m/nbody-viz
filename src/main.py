@@ -87,6 +87,10 @@ def density_image(
         bins=n_pixels,
         range=[ylim, xlim],
     )
+    # Get pixels that are empty
+    mask = image == 0
+    print(mask.sum())
+
     # Apply log scale to histogram (multiple times to increase contrast)
     if apply_log is not None:
         for _ in range(apply_log):
@@ -102,6 +106,10 @@ def density_image(
         color_bins = np.geomspace(1, n_colors, n_colors)
         color_bins = color_bins / color_bins.max()
         image = np.digitize(image, color_bins)
+
+    # Apply mask to empty pixels
+    if gaussian_sigma is None and n_colors is None:
+        image[mask] = 0
 
     return image
 
@@ -135,7 +143,7 @@ good_parameters = [
         gaussian_sigma=None,
         apply_log=2,
         n_colors=None,
-        colormap="inferno",
+        colormap="Oranges",
     ),
     PlotParameters(
         slice_idx=1,
@@ -145,7 +153,7 @@ good_parameters = [
         gaussian_sigma=None,
         apply_log=1,
         n_colors=None,
-        colormap="inferno",
+        colormap="Oranges",
     ),
 ]
 
@@ -164,9 +172,10 @@ for param_idx, param in enumerate(good_parameters):
     )
     plt.figure(figsize=(10, 10))
     plt.imshow(image, cmap=param.colormap)
-    plt.show()
-    image = apply_colormap(image, param.colormap)
-    pil_image = Image.fromarray((image * 255).astype(np.uint8))
+    # plt.show()
+    image_map = apply_colormap(image, param.colormap)
+    image_map[image == 0] = np.array([1, 1, 1, 0])
+    pil_image = Image.fromarray((image_map * 255).astype(np.uint8))
     pil_image.save(ROOT_DIR / f"data/snap_{param_idx}.png")
 
 # %%
