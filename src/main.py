@@ -1,7 +1,7 @@
 # %%
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, Tuple
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -89,7 +89,6 @@ def density_image(
     )
     # Get pixels that are empty
     mask = image == 0
-    print(mask.sum())
 
     # Apply log scale to histogram (multiple times to increase contrast)
     if apply_log is not None:
@@ -114,9 +113,60 @@ def density_image(
     return image
 
 
-def apply_colormap(image: np.ndarray, cmap: str):
-    norm = mpl.colors.Normalize(vmin=0, vmax=1)
-    return mpl.colormaps[cmap](norm(image))
+def apply_colormap(
+    image: np.ndarray, cmap: str | Callable[[float], str]
+) -> np.ndarray:
+    norm = mpl.colors.Normalize(vmin=0, vmax=1)(image)
+    if isinstance(cmap, str):
+        cmap = mpl.colormaps[cmap]
+    return cmap(norm)
+
+
+# %%
+
+colors = [
+    "#353533",
+    "#365f8a",
+    "#2a9d8f",
+    "#f4a261",
+]
+colors = [np.asarray(mpl.colors.to_rgb(color)) for color in colors]
+
+
+def interpolate(x, *colors):
+    n_colors = len(colors)
+    color_idx = x * (n_colors - 1)
+    color_idx_floor = int(color_idx)
+    if color_idx_floor == n_colors - 1:
+        color_idx_floor -= 1
+    color_idx_ceil = color_idx_floor + 1
+    x_floor = color_idx_floor / (n_colors - 1)
+    x_ceil = color_idx_ceil / (n_colors - 1)
+    # print((x_ceil - x) + (x - x_floor))
+    color_floor = colors[color_idx_floor]
+    color_ceil = colors[color_idx_ceil]
+    return ((x_ceil - x) * color_floor + (x - x_floor) * color_ceil) * (
+        n_colors - 1
+    )
+
+
+def color_map(x):
+    out = np.zeros(x.shape + (4,))
+    for i in range(x.shape[0]):
+        for j in range(x.shape[1]):
+            rgb = interpolate(x[i, j], *colors)
+            out[i, j, :] = np.append(rgb, 1)
+    return out
+
+
+# %%
+# Plot color map test
+n_pixels = 100
+image = np.linspace(0, 1, n_pixels).reshape(-1, 1)
+image = np.tile(image, (1, n_pixels))
+image_map = color_map(image)
+plt.imshow(image_map)
+plt.show()
 
 
 # %%
@@ -131,7 +181,7 @@ class PlotParameters:
     gaussian_sigma: int | None
     apply_log: int | None
     n_colors: int | None
-    colormap: str
+    colormap: str | Callable[[float], str]
 
 
 good_parameters = [
@@ -143,7 +193,7 @@ good_parameters = [
         gaussian_sigma=None,
         apply_log=2,
         n_colors=None,
-        colormap="Oranges",
+        colormap=color_map,
     ),
     PlotParameters(
         slice_idx=1,
@@ -153,7 +203,7 @@ good_parameters = [
         gaussian_sigma=None,
         apply_log=1,
         n_colors=None,
-        colormap="Oranges",
+        colormap=color_map,
     ),
 ]
 
@@ -170,12 +220,11 @@ for param_idx, param in enumerate(good_parameters):
         n_colors=param.n_colors,
         apply_log=param.apply_log,
     )
-    plt.figure(figsize=(10, 10))
-    plt.imshow(image, cmap=param.colormap)
-    # plt.show()
     image_map = apply_colormap(image, param.colormap)
-    image_map[image == 0] = np.array([1, 1, 1, 0])
+    image_map[image == 0] = np.array([1, 1, 1, 1])
     pil_image = Image.fromarray((image_map * 255).astype(np.uint8))
     pil_image.save(ROOT_DIR / f"data/snap_{param_idx}.png")
+    plt.imshow(image_map)
+    plt.show()
 
 # %%
