@@ -7,9 +7,9 @@ Needs a dataset in CSV format with the columns `time`, `id`, `mass`, `x`, `y`,
 
 Produces plots like these, computed from the dataset `simdata_ias15.csv`:
 
-![flyby](README_files/snap_0.png)
+![flyby](.readme/snap_0.png)
 
-![flyby](README_files/snap_1.png)
+![flyby](.readme/snap_1.png)
 
 ## Installation
 
