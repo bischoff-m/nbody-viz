@@ -1,4 +1,4 @@
-# flyby-viz
+# nbody-viz
 
 Visualizations of n-body flyby simulations.
 
